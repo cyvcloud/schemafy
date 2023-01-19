@@ -49,6 +49,8 @@
 //! }
 //! ```
 
+use regex::Regex;
+
 /// Generate Rust types from a JSON schema.
 ///
 /// If the `root` parameter is supplied, then a type will be
@@ -76,10 +78,14 @@
 pub fn schemafy(tokens: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let def = syn::parse_macro_input!(tokens as Def);
     let root_name = def.root;
+    let attributes = def.attributes;
+    let attributes_whitelist = def.attributes_whitelist;
     let input_file = def.input_file.value();
     schemafy_lib::Generator::builder()
         .with_root_name(root_name)
         .with_input_file(&input_file)
+        .with_attributes(attributes)
+        .with_attributes_whitelist(attributes_whitelist)
         .build()
         .generate()
         .into()
@@ -88,22 +94,47 @@ pub fn schemafy(tokens: proc_macro::TokenStream) -> proc_macro::TokenStream {
 struct Def {
     root: Option<String>,
     input_file: syn::LitStr,
+    attributes: Vec<syn::Attribute>,
+    attributes_whitelist: Option<Regex>,
 }
 
 impl syn::parse::Parse for Def {
     fn parse(input: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
-        let root = if input.peek(syn::Ident) {
-            let root_ident: syn::Ident = input.parse()?;
-            if root_ident != "root" {
-                return Err(syn::Error::new(root_ident.span(), "Expected `root`"));
+        let mut root = None;
+        let mut attributes = Vec::new();
+        let mut attributes_whitelist = None;
+        loop {
+            if input.peek(syn::Ident) {
+                let ident: syn::Ident = input.parse()?;
+                input.parse::<syn::Token![:]>()?;
+                match ident.to_string().as_str() {
+                    "root" => {
+                        root = Some(input.parse::<syn::Ident>()?.to_string());
+                    },
+                    "attr" => {
+                        attributes = input.call(syn::Attribute::parse_outer)?
+                    },
+                    "attr_whitelist" => {
+                          attributes_whitelist = Some(Regex::new(&input.parse::<syn::LitStr>()?.value()).expect("whitelist is no valid regex"))
+                    },
+                    _ => {
+                        return Err(syn::Error::new(
+                            ident.span(),
+                            "Expected one of `root`"
+                        ));
+                    }
+                }
+            } else {
+                break;
             }
-            input.parse::<syn::Token![:]>()?;
-            Some(input.parse::<syn::Ident>()?.to_string())
-        } else {
-            None
-        };
+        }
+        if attributes.len() > 1 && attributes_whitelist.is_none() {
+            panic!("attributes is set but no whitelist is specified");
+        }
         Ok(Def {
             root,
+            attributes,
+            attributes_whitelist,
             input_file: input.parse()?,
         })
     }

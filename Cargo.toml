@@ -28,6 +28,7 @@ serde_json = "1.0"
 serde_derive = "1.0"
 serde_repr = "0.1.7"
 syn = "1.0"
+regex = "1.7"
 
 Inflector = "0.11"
 

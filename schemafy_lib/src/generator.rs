@@ -9,13 +9,18 @@ use std::{
 ///
 /// The default options are usually fine. In that case, you can use
 /// the [`generate()`](fn.generate.html) convenience method instead.
-#[derive(Debug, PartialEq)]
 #[must_use]
 pub struct Generator<'a, 'b> {
     /// The name of the root type defined by the schema. If the schema
     /// does not define a root type (some schemas are simply a
     /// collection of definitions) then simply pass `None`.
     pub root_name: Option<String>,
+    /// A list of attributes that should be added to the generated structs. Will only be applied to
+    /// structs whose identifier matches the provided whitelisting regex. If attributes are specified
+    /// but no whitelist is specified, the attributes will not be applied to any struct.
+    pub attributes: Vec<syn::Attribute>,
+    /// A regex for determining which struct should get the provided attributes.
+    pub attributes_whitelist: Option<regex::Regex>,
     /// The module path to this crate. Some generated code may make
     /// use of types defined in this crate. Unless you have
     /// re-exported this crate or imported it under a different name,
@@ -50,7 +55,7 @@ impl<'a, 'b> Generator<'a, 'b> {
                 err
             )
         });
-        let mut expander = Expander::new(self.root_name.as_deref(), self.schemafy_path, &schema);
+        let mut expander = Expander::new(self.root_name.as_deref(), &self.attributes, &self.attributes_whitelist, self.schemafy_path, &schema);
         expander.expand(&schema)
     }
 
@@ -66,7 +71,6 @@ impl<'a, 'b> Generator<'a, 'b> {
     }
 }
 
-#[derive(Debug, PartialEq)]
 #[must_use]
 pub struct GeneratorBuilder<'a, 'b> {
     inner: Generator<'a, 'b>,
@@ -77,6 +81,8 @@ impl<'a, 'b> Default for GeneratorBuilder<'a, 'b> {
         Self {
             inner: Generator {
                 root_name: None,
+                attributes: Vec::new(),
+                attributes_whitelist: None,
                 schemafy_path: "::schemafy_core::",
                 input_file: Path::new("schema.json"),
             },
@@ -91,6 +97,14 @@ impl<'a, 'b> GeneratorBuilder<'a, 'b> {
     }
     pub fn with_root_name_str(mut self, root_name: &str) -> Self {
         self.inner.root_name = Some(root_name.to_string());
+        self
+    }
+    pub fn with_attributes(mut self, attributes: Vec<syn::Attribute>) -> Self {
+        self.inner.attributes = attributes;
+        self
+    }
+    pub fn with_attributes_whitelist(mut self, attributes_whitelist: Option<regex::Regex>) -> Self {
+        self.inner.attributes_whitelist = attributes_whitelist;
         self
     }
     pub fn with_input_file<P: ?Sized + AsRef<Path>>(mut self, input_file: &'b P) -> Self {
