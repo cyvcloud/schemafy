@@ -313,7 +313,7 @@ impl<'a, 'r> FieldExpander<'a, 'r> {
 pub struct Expander<'r> {
     root_name: Option<&'r str>,
     attributes: &'r Vec<syn::Attribute>,
-    attributes_whitelist: &'r  Option<regex::Regex>,
+    attributes_whitelist: &'r  Option<fancy_regex::Regex>,
     schemafy_path: &'r str,
     root: &'r Schema,
     current_type: String,
@@ -344,7 +344,7 @@ impl<'r> Expander<'r> {
     pub fn new(
         root_name: Option<&'r str>,
         attributes: &'r Vec<syn::Attribute>,
-        attributes_whitelist: &'r Option<regex::Regex>,
+        attributes_whitelist: &'r Option<fancy_regex::Regex>,
         schemafy_path: &'r str,
         root: &'r Schema,
     ) -> Expander<'r> {
@@ -611,7 +611,7 @@ impl<'r> Expander<'r> {
         let is_enum = schema.enum_.as_ref().map_or(false, |e| !e.is_empty());
         let type_decl = if is_struct {
             let empty_vec = Vec::new();
-            let attributes = if self.attributes_whitelist.is_some() && self.attributes_whitelist.as_ref().unwrap().is_match(&name.to_string()) {
+            let attributes = if self.attributes_whitelist.is_some() && self.attributes_whitelist.as_ref().unwrap().is_match(&name.to_string()).unwrap_or(false) {
                 self.attributes
             } else {
                 &empty_vec

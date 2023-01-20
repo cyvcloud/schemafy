@@ -20,7 +20,7 @@ pub struct Generator<'a, 'b> {
     /// but no whitelist is specified, the attributes will not be applied to any struct.
     pub attributes: Vec<syn::Attribute>,
     /// A regex for determining which struct should get the provided attributes.
-    pub attributes_whitelist: Option<regex::Regex>,
+    pub attributes_whitelist: Option<fancy_regex::Regex>,
     /// The module path to this crate. Some generated code may make
     /// use of types defined in this crate. Unless you have
     /// re-exported this crate or imported it under a different name,
@@ -103,7 +103,7 @@ impl<'a, 'b> GeneratorBuilder<'a, 'b> {
         self.inner.attributes = attributes;
         self
     }
-    pub fn with_attributes_whitelist(mut self, attributes_whitelist: Option<regex::Regex>) -> Self {
+    pub fn with_attributes_whitelist(mut self, attributes_whitelist: Option<fancy_regex::Regex>) -> Self {
         self.inner.attributes_whitelist = attributes_whitelist;
         self
     }

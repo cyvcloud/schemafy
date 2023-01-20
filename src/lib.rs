@@ -49,8 +49,6 @@
 //! }
 //! ```
 
-use regex::Regex;
-
 /// Generate Rust types from a JSON schema.
 ///
 /// If the `root` parameter is supplied, then a type will be
@@ -95,7 +93,7 @@ struct Def {
     root: Option<String>,
     input_file: syn::LitStr,
     attributes: Vec<syn::Attribute>,
-    attributes_whitelist: Option<Regex>,
+    attributes_whitelist: Option<fancy_regex::Regex>,
 }
 
 impl syn::parse::Parse for Def {
@@ -115,7 +113,7 @@ impl syn::parse::Parse for Def {
                         attributes = input.call(syn::Attribute::parse_outer)?
                     },
                     "attr_whitelist" => {
-                          attributes_whitelist = Some(Regex::new(&input.parse::<syn::LitStr>()?.value()).expect("whitelist is no valid regex"))
+                          attributes_whitelist = Some(fancy_regex::Regex::new(&input.parse::<syn::LitStr>()?.value()).expect("whitelist is no valid regex"))
                     },
                     _ => {
                         return Err(syn::Error::new(
