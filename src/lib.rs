@@ -93,14 +93,14 @@ struct Def {
     root: Option<String>,
     input_file: syn::LitStr,
     attributes: Vec<syn::Attribute>,
-    attributes_whitelist: Option<fancy_regex::Regex>,
+    attributes_whitelist: Vec<fancy_regex::Regex>,
 }
 
 impl syn::parse::Parse for Def {
     fn parse(input: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
         let mut root = None;
         let mut attributes = Vec::new();
-        let mut attributes_whitelist = None;
+        let mut attributes_whitelist = Vec::new();
         loop {
             if input.peek(syn::Ident) {
                 let ident: syn::Ident = input.parse()?;
@@ -113,12 +113,15 @@ impl syn::parse::Parse for Def {
                         attributes = input.call(syn::Attribute::parse_outer)?
                     },
                     "attr_whitelist" => {
-                          attributes_whitelist = Some(fancy_regex::Regex::new(&input.parse::<syn::LitStr>()?.value()).expect("whitelist is no valid regex"))
+                        let punctuated: syn::punctuated::Punctuated<syn::LitStr, syn::Token![,]> = input.call(syn::punctuated::Punctuated::parse_separated_nonempty)?;
+                        for (i, whitelist) in punctuated.iter().enumerate() {
+                            attributes_whitelist.push(fancy_regex::Regex::new(&whitelist.value()).expect(&format!("whitelist with index {} is no valid regex", i)))
+                        }
                     },
                     _ => {
                         return Err(syn::Error::new(
                             ident.span(),
-                            "Expected one of `root`"
+                            "Expected one of `root`, `attr` or `attr_whitelist`"
                         ));
                     }
                 }
@@ -126,8 +129,8 @@ impl syn::parse::Parse for Def {
                 break;
             }
         }
-        if attributes.len() > 1 && attributes_whitelist.is_none() {
-            panic!("attributes is set but no whitelist is specified");
+        if attributes.len() > 1 && attributes_whitelist.len() != attributes.len() {
+            panic!("must specify whitelist entry for each attribute");
         }
         Ok(Def {
             root,

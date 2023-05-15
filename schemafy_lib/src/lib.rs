@@ -313,7 +313,7 @@ impl<'a, 'r> FieldExpander<'a, 'r> {
 pub struct Expander<'r> {
     root_name: Option<&'r str>,
     attributes: &'r Vec<syn::Attribute>,
-    attributes_whitelist: &'r  Option<fancy_regex::Regex>,
+    attributes_whitelist: &'r  Vec<fancy_regex::Regex>,
     schemafy_path: &'r str,
     root: &'r Schema,
     current_type: String,
@@ -344,7 +344,7 @@ impl<'r> Expander<'r> {
     pub fn new(
         root_name: Option<&'r str>,
         attributes: &'r Vec<syn::Attribute>,
-        attributes_whitelist: &'r Option<fancy_regex::Regex>,
+        attributes_whitelist: &'r Vec<fancy_regex::Regex>,
         schemafy_path: &'r str,
         root: &'r Schema,
     ) -> Expander<'r> {
@@ -610,12 +610,10 @@ impl<'r> Expander<'r> {
         };
         let is_enum = schema.enum_.as_ref().map_or(false, |e| !e.is_empty());
         let type_decl = if is_struct {
-            let empty_vec = Vec::new();
-            let attributes = if self.attributes_whitelist.is_some() && self.attributes_whitelist.as_ref().unwrap().is_match(&name.to_string()).unwrap_or(false) {
-                self.attributes
-            } else {
-                &empty_vec
-            };
+            let attributes: Vec<&syn::Attribute> = self.attributes.iter().enumerate().filter(|(i, _)| {
+                let whitelist = self.attributes_whitelist.get(*i).expect(&format!("Expected whitelist entry for index {} to exist", i));
+                whitelist.is_match(&name.to_string()).unwrap_or(false)
+            }).map(|(_, a)| a).collect();
             if default {
                 quote! {
                     #[derive(Clone, PartialEq, Debug, Default, Deserialize, Serialize)]
@@ -640,12 +638,10 @@ impl<'r> Expander<'r> {
                 }
             }
         } else if is_enum {
-            let empty_vec = Vec::new();
-            let attributes = if self.attributes_whitelist.is_some() && self.attributes_whitelist.as_ref().unwrap().is_match(&name.to_string()).unwrap_or(false) {
-                self.attributes
-            } else {
-                &empty_vec
-            };
+            let attributes: Vec<&syn::Attribute> = self.attributes.iter().enumerate().filter(|(i, _)| {
+                let whitelist = self.attributes_whitelist.get(*i).expect(&format!("Expected whitelist entry for index {} to exist", i));
+                whitelist.is_match(&name.to_string()).unwrap_or(false)
+            }).map(|(_, a)| a).collect();
             let mut optional = false;
             let mut repr_i64 = false;
             let variants = if schema.enum_names.as_ref().map_or(false, |e| !e.is_empty()) {
