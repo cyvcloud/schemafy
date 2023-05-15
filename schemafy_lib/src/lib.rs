@@ -640,6 +640,12 @@ impl<'r> Expander<'r> {
                 }
             }
         } else if is_enum {
+            let empty_vec = Vec::new();
+            let attributes = if self.attributes_whitelist.is_some() && self.attributes_whitelist.as_ref().unwrap().is_match(&name.to_string()).unwrap_or(false) {
+                self.attributes
+            } else {
+                &empty_vec
+            };
             let mut optional = false;
             let mut repr_i64 = false;
             let variants = if schema.enum_names.as_ref().map_or(false, |e| !e.is_empty()) {
@@ -723,6 +729,9 @@ impl<'r> Expander<'r> {
                         #[derive(Clone, PartialEq, Debug, Serialize_repr, Deserialize_repr)]
                         #serde_rename
                         #[repr(i64)]
+                        #(
+                            #attributes
+                        )*
                         pub enum #enum_name {
                             #(#variants),*
                         }
@@ -732,6 +741,9 @@ impl<'r> Expander<'r> {
                         pub type #name = Option<#enum_name>;
                         #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
                         #serde_rename
+                        #(
+                            #attributes
+                        )*
                         pub enum #enum_name {
                             #(#variants),*
                         }
@@ -742,6 +754,9 @@ impl<'r> Expander<'r> {
                     #[derive(Clone, PartialEq, Debug, Serialize_repr, Deserialize_repr)]
                     #serde_rename
                     #[repr(i64)]
+                    #(
+                        #attributes
+                    )*
                     pub enum #name {
                         #(#variants),*
                     }
@@ -750,6 +765,9 @@ impl<'r> Expander<'r> {
                 quote! {
                     #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
                     #serde_rename
+                    #(
+                        #attributes
+                    )*
                     pub enum #name {
                         #(#variants),*
                     }
